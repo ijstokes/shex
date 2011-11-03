@@ -1,0 +1,80 @@
+#!/usr/bin/env python2.6
+
+# Run with $ python2.6 -m doctest doctests.txt (add -v for verbose output)
+
+#TODO: write tests for: bz2 chmod chown curl gunzip gzip search sort tac tar untar unzip
+
+#TODO: shex.curl, shex.tac are b0rked.
+
+'''
+>>> import shex,os
+
+>>> shex.ls(".")
+['./doctests.txt', './shex.py', './shex.pyc', './shextest.py', './sysinfo.py']
+
+
+>>> shex.head("sysinfo.py", num_lines=5)
+['import  shex as s\n', '\n', 'import  xconfig, xconfig.advanced\n', '\n', 'class TicToc:\n']
+
+>>> shex.tail("sysinfo.py", num_lines=5)
+['if __name__ == "__main__":\n', '    si = SysInfo()\n', '    tt = TicToc()\n', '    tt.tic()\n', '    tt.toc()']
+
+>>> fh = open("/tmp/cattest", 'w')
+>>> fh.write("Lorem ipsum dolor sit amet, consectetur adipiscing elit. Integer cursus ullamcorper volutpat. Nulla neque purus, lobortis sed blandit et, semper ac erat. Aenean mauris erat, elementum sit amet sollicitudin vitae, posuere eget tortor. Sed venenatis est id sem laoreet hendrerit. Mauris lectus felis, suscipit ut dignissim id, ullamcorper sit amet justo. Fusce lobortis nisl ac ipsum volutpat viverra.")
+>>> fh.close()
+>>> shex.cat("/tmp/cattest")
+['Lorem ipsum dolor sit amet, consectetur adipiscing elit. Integer cursus ullamcorper volutpat. Nulla neque purus, lobortis sed blandit et, semper ac erat. Aenean mauris erat, elementum sit amet sollicitudin vitae, posuere eget tortor. Sed venenatis est id sem laoreet hendrerit. Mauris lectus felis, suscipit ut dignissim id, ullamcorper sit amet justo. Fusce lobortis nisl ac ipsum volutpat viverra.']
+
+>>> shex.rm('/tmp/cattest')
+>>> shex.findFile('ls', '/usr/bin:/bin', implicitExt='.exe')
+'/bin/ls'
+
+>>> shex.mkdir('TEST')
+>>> shex.ls()
+['TEST', 'doctests.txt', 'shex.py', 'shex.pyc', 'shextest.py', 'sysinfo.py']
+
+>>> os.rmdir('TEST')
+
+>>> shex.cp('sysinfo.py', 'COPY')
+>>> shex.ls()
+['COPY', 'doctests.txt', 'shex.py', 'shex.pyc', 'shextest.py', 'sysinfo.py']
+
+>>> shex.rm('COPY')
+>>> shex.ls()
+['doctests.txt', 'shex.py', 'shex.pyc', 'shextest.py', 'sysinfo.py']
+
+>>> shex.fsplit('sysinfo.py', 50)
+['000', '001']
+>>> shex.ls()
+['000', '001', 'doctests.txt', 'shex.py', 'shex.pyc', 'shextest.py', 'sysinfo.py']
+
+>>> shex.rm('001')
+>>> shex.rm('000')
+
+>>> shex.grep("import", "sysinfo.py")
+['import  shex as s\n', 'import  xconfig, xconfig.advanced\n']
+
+>>> shex.touch("TOUCHTEST")
+>>> shex.ls()
+['TOUCHTEST', 'doctests.txt', 'shex.py', 'shex.pyc', 'shextest.py', 'sysinfo.py']
+>>> shex.rm('TOUCHTEST')
+
+>>> shex.whoami()
+'jahl'
+
+>>> shex.pushd('..')
+
+>>> shex.ls()
+['ccp4', 'dj', 'gacl', 'metrics', 'molrep', 'osg', 'registration', 'sbanalysis', 'shex', 'tmalign', 'xconfig']
+
+>>> shex.peek()
+'/nfs/home/jahl/svn/ijstokes/projects/shex'
+
+>>> shex.popd()
+
+>>> shex.ls()
+['doctests.txt', 'shex.py', 'shex.pyc', 'shextest.py', 'sysinfo.py']
+
+'''
+
+
