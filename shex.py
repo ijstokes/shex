@@ -131,7 +131,7 @@ from    os          import environ, chdir, getcwd, popen, popen2, popen3, popen4
                            tmpfile, link, makedirs, remove, \
                            rmdir, removedirs, rename, renames, symlink, kill, \
                            killpg, nice, times, getloadavg, getpid, getuid, geteuid, \
-                           getegid, uname
+                           getegid, uname, pathsep
 from    subprocess  import Popen, PIPE
 from    signal      import alarm, signal, SIGALRM, SIGKILL, SIGINT, SIG_DFL, SIG_IGN
 
@@ -185,20 +185,21 @@ LOG_ERROR_SET       = set(['DEBUG', 'INFO', 'WARN', 'ERROR'])
 LOG_CRITICAL_SET    = set(['DEBUG', 'INFO', 'WARN', 'ERROR', 'CRITICAL'])
 LOG_EXCEPTION_SET   = set(['DEBUG', 'INFO', 'WARN', 'ERROR', 'CRITICAL', 'EXCEPTION'])
 
-SECOND = 1
-MINUTE = 60
-HOUR   = 60  * MINUTE
-DAY    = 12  * HOUR
-WEEK   = 7   * DAY
-MONTH  = 30  * DAY
-YEAR   = 365 * DAY
+SECOND              = 1
+MINUTE              = 60
+HOUR                = 60  * MINUTE
+DAY                 = 12  * HOUR
+WEEK                = 7   * DAY
+MONTH               = 30  * DAY
+YEAR                = 365 * DAY
 
-KB     = 2**10
-MB     = 2**20
-GB     = 2**30
-TB     = 2**40
-PB     = 2**50
-EB     = 2**60
+KB                  = 2**10
+MB                  = 2**20
+GB                  = 2**30
+TB                  = 2**40
+PB                  = 2**50
+EB                  = 2**60
+
 
 (major, minor, patch, note, other) = sys.version_info
 ON_POSIX = 'posix' in sys.builtin_module_names
@@ -366,13 +367,16 @@ else:
     j   = lambda t,d : re.sub(r"\$([A-Za-z0-9_]+)", r"%(\1)s", re.sub(r"%","%%", t)) % d
 
 
-def ls(p_raw=None, d=False, s=False, lc=False):
+def ls(p_raw=None, d=False, r=False, a=False, s=False, lc=False):
     """
     The equivalent of Unix ls, but does not list '.', '..'.  "d" is
     a falg with rough equivalence to the "-d" option and will not expand
     directories if set to True (default is False).  The exceptions is a bare
     ls() on the current directory which will not expand directories regardless
     of setting.
+
+    a: include entries beginning with "."
+    r: recursively search sub-directories
 
     Pre-conditions: p_raw is string that is a valid unix-style path, relative
     or absolute, and possibly including wildcards or variable names. p_raw can
@@ -391,22 +395,40 @@ def ls(p_raw=None, d=False, s=False, lc=False):
 
     Possible errors: none
     """
+    pinfo("entering shex.ls [%s]" % p_raw)
 
     flist = []
 
     if p_raw == None: # list contents of current directory only
+        pinfo("shex.ls CUR_DIR")
         flist = clean_flist("*", s=s)
     else: # otherwise list contents of specified path/regex
         flist = clean_flist(p_raw, s=s)
+        pinfo("shex.ls flist size [%i]" % len(flist))
+        new_flist = []
         if not d:
             for e in flist:
                 if isdir(e): # remove the entry and extend the list with the contents of the dir
-                    flist.remove(e)
-                    flist.extend(glob(expand("%s/*" % e)))
+                    new_flist.extend(glob(expand("%s/*" % e)))
+                else:
+                    new_flist.extend(e)
+        elif r: # and d (implied)
+            for e in flist:
+                if isdir(e): # remove the entry and extend the list with the contents of the dir
+                    pinfo("found directory [%s]" % e)
+                    for root, subdirs, files in os.walk(e):
+                        for file in files:
+                            f = os.path.join(root,subdir,file)
+                            new_flist.append(f)
+                        for subdir in subdirs:
+                            f = os.path.join(root,subdir)
+                            new_flist.append(f)
+                else:
+                    new_flist.extend(e)
 
-    flist.sort()
+    new_flist.sort()
 
-    return flist
+    return new_flist
 
 # TODO: Implement equivalent of ls -Flad
 #def ll(p_raw="*", s=False, lc=False):
@@ -1441,6 +1463,8 @@ def c(args, cwd=None, env=None, stdin=None, shell=False, kill_tree=True, t=None,
             if p.poll() == None:
                 p.kill()
 
+    start = timestamp()
+
     q_out = Queue()
     q_err = Queue()
     full_stdout = []
@@ -1531,7 +1555,7 @@ def c(args, cwd=None, env=None, stdin=None, shell=False, kill_tree=True, t=None,
     sys.stdout.flush()
     sys.stderr.flush()
 
-    return full_stdout, full_stderr, last_exitcode
+    return full_stdout, full_stderr, Marker(last_exitcode, start=start)
 
 def get_process_children(pid):
     p = Popen('ps --no-headers -o pid --ppid %d' % pid, shell = True,
@@ -1668,6 +1692,47 @@ def touch(fp):
     """
     fh = open(fp,'a')
     fh.close()
+
+
+def which(filename, search_path=os.environ['PATH']):
+   """Given a search path, find file.  Defaults to searching the PATH environment variable."""
+
+   file_found = False
+
+   for path in search_path.split(pathsep):
+      if exists(join(path, filename)):
+          file_found = True
+          break
+
+   if file_found:
+      return abspath(join(path, filename))
+   else:
+      return None
+
+class Marker():
+
+    def __init__(self, exitcode=0, start=0, stop=None, runtime=None, who=None, host=None, dir=None):
+        self.exitcode   = exitcode
+        self.start      = start
+        if not stop:
+            self.stop       = timestamp()
+        if not runtime:
+            self.runtime    = self.stop - self.start
+        if not who:
+            self.who        = username()
+        if not host:
+            self.host       = hostname()
+        if not dir:
+            self.dir        = pwd()
+
+    def tolist(self):
+        return [self.exitcode, self.start, self.stop, self.runtime, self.who, self.host, self.dir]
+def import_class(cl):
+    """Use a string to load a class"""
+    d = cl.rfind(".")
+    classname = cl[d+1:]
+    m = __import__(cl[0:d], globals(), locals(), [classname])
+    return getattr(m, classname)
 
 #TODO: This is broken and currently does not work.
 m = {}
